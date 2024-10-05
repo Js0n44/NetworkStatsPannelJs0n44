@@ -1,0 +1,157 @@
+import tkinter as tk
+from tkinter import ttk
+import socket
+import threading
+import requests
+import time
+import pyperclip as copy
+import speedtest
+from scapy.all import sniff
+
+import subprocess
+import platform
+
+import subprocess
+import platform
+import re
+
+import subprocess
+import platform 
+import re
+
+def check_wifi_encryption():
+    system = platform.system()
+    
+    if system == "Windows":
+        command = "netsh wlan show interfaces"
+    elif system == "Linux":
+        command = "nmcli -f SECURITY device wifi"
+    else:
+        return "Unsupported OS. This script works on Windows and Linux only."
+    result = subprocess.check_output(command, shell=True, text=True)
+    print("Command Output:")
+    return result
+
+
+def ping(host):
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
+    command = ['ping', param, '4', host]  # Pinging 4 times
+
+    try:
+        output = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        if output.returncode == 0:
+            return (f"Ping to {host} successful:\n{output.stdout}")
+        else:
+            return (f"Ping to {host} failed:\n{output.stderr}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def get_wifi_speeds():
+    st = speedtest.Speedtest()
+    st.get_best_server()  
+
+    download_speed = st.download() / 1_000_000  # Convert from bits to Mbps
+    upload_speed = st.upload() / 1_000_000      # Convert from bits to Mbps
+
+    return download_speed, upload_speed
+
+def get_public_ip():
+    try:
+        response = requests.get('https://api.ipify.org?format=json')
+        ip = response.json()['ip']
+        return ip
+    except requests.RequestException as e:
+        print(f"Failed to get public IP: {e}")
+        return None
+
+def get_open_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('', 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+def packet_handler(packet):
+    print(packet.show())
+
+def refresh_speeds_thread():
+    wifi_upload_speed_label.config(text="loading...")
+    wifi_download_speed_label.config(text="loading...")
+
+    download_speed, upload_speed = get_wifi_speeds()
+
+    wifi_upload_speed_label.config(text=f"{upload_speed:.2f} Mbps")
+    wifi_download_speed_label.config(text=f"{download_speed:.2f} Mbps")
+
+def refresh_speeds():
+    threading.Thread(target=refresh_speeds_thread).start()
+
+root = tk.Tk()
+root.title("Network Informer")
+
+root.geometry('800x600+50+50')
+root.resizable(False, False)
+
+copylabel = tk.Label(root, text="")
+copylabel.grid(column=1, row=3)
+
+wifi_upload_speed_label = tk.Label(root, text="Upload speed: N/A")
+wifi_upload_speed_label.grid(column=2, row=1)
+
+wifi_download_speed_label = tk.Label(root, text="Download speed: N/A")
+wifi_download_speed_label.grid(column=2, row=2)
+
+def copyIpAdress():
+    ip_address = get_public_ip()
+    copylabel.config(text=str(ip_address))
+    copy.copy(ip_address)
+
+def copyAnOpenPort():
+    port = get_open_port()
+    copylabel.config(text=str(port))
+    copy.copy(port)
+
+ip_grabber_button = ttk.Button(root, text="Copy IP Address", command=copyIpAdress)
+ip_grabber_button.grid(column=1, row=1)
+
+get_open_port_button = ttk.Button(root, text="Copy An Open Port", command=copyAnOpenPort)
+get_open_port_button.grid(column=1, row=2)
+
+refresh_speed_button = ttk.Button(root, text="Refresh Speeds", command=refresh_speeds)
+
+refresh_speed_button.grid(column=2, row=3)
+
+data_label = ttk.Label(root, text=check_wifi_encryption() )
+
+data_label.grid(
+    column=1,  # Change this to 0 if you want it to start from the first column
+    row=5,
+    columnspan=2  # This will make the label span across both columns
+)
+
+title = ttk.Label(
+    root,
+    text="Copy and paste:"
+)
+
+title.grid(
+    column=0, row=0,
+    columnspan=2
+)
+
+ping_label = ttk.Label(
+    root,
+    text=ping("www.google.com")
+)
+
+ping_label.grid(
+    column=3,
+    row=5,
+    columnspan=2
+)
+
+root.mainloop()
+
+
